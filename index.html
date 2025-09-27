@@ -49,7 +49,7 @@
         .handwriting-box {
             border: 3px solid #ccc;
             border-radius: 12px;
-            touch-action: none; /* Prevents unwanted scrolling on touch devices */
+            touch-action: none; /* Prevents unwanted scrolling on touch devices initially, but overridden by JS */
             background-color: #ffffff;
             width: 100%;
             height: 100%;
@@ -103,8 +103,13 @@
 <body class="p-4 min-h-screen flex items-start justify-center">
 
     <div class="container-wrapper w-full p-4 md:p-8 bg-white rounded-xl shadow-2xl mt-4">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">📝 ฝึกเขียนตามคำบอกภาษาจีน</h1>
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">📝 ฝึกเขียนตามคำบอกภาษาจีน by พี่มิวสิคสุดหล่ออห์</h1>
         
+        <!-- API Key Warning (Visible only to developers editing the code) -->
+        <div class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 rounded-lg text-sm text-red-800 font-medium">
+            ⚠️ ไม่มีอะไร..
+        </div>
+
         <!-- Progress and Mode Display -->
         <div class="text-center text-gray-600 mb-6 p-3 bg-gray-100 rounded-lg">
             <p class="text-sm font-semibold">ความคืบหน้า: <span id="progressDisplay" class="font-bold text-green-600">0/9</span> คำ</p>
@@ -183,9 +188,8 @@
     </div>
 
     <script>
-        // 🚨🚨🚨 คำเตือนความปลอดภัยที่สำคัญ! 🚨🚨🚨
-        // หากคุณนำโค้ดนี้ไปไว้บน GitHub Pages หรือเว็บไซต์สาธารณะ คีย์นี้จะถูกเปิดเผย
-        // กรุณาเปลี่ยน YOUR_GEMINI_API_KEY_HERE เป็นคีย์ของคุณ
+        // 🚨🚨🚨 API KEY (ตามคำขอ) 🚨🚨🚨
+        // คีย์นี้ถูกใส่โดยตรงและจะถูกเปิดเผยต่อสาธารณะบน GitHub Pages
         const HARDCODED_API_KEY = "AIzaSyAjUZhQUazoAdsKGTYZckf026NWSK97sw4"; 
         
         const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
@@ -256,12 +260,45 @@
             return { x, y };
         }
 
-        // --- Canvas Management ---
+        // --- Canvas Drawing Handlers ---
         let activeCanvas = null; 
         let activeCtx = null;
 
+        function startDrawing(event) {
+            const canvas = event.target;
+            // Only start drawing if the event originated from one of our canvases
+            if (canvas.tagName !== 'CANVAS' || !canvases.includes(canvas)) return;
+
+            activeCanvas = canvas;
+            const canvasIndex = canvases.indexOf(canvas);
+            activeCtx = contexts[canvasIndex];
+
+            isDrawing = true;
+            const pos = getEventPos(event, activeCanvas);
+            activeCtx.beginPath();
+            activeCtx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(event) {
+            // Check state before drawing
+            if (!isDrawing || !activeCtx || !activeCanvas) return;
+            
+            const pos = getEventPos(event, activeCanvas); 
+            
+            activeCtx.lineTo(pos.x, pos.y);
+            activeCtx.stroke();
+        }
+
+        function stopDrawing() {
+            // Stop drawing regardless of where the mouse/touch ended
+            isDrawing = false;
+            activeCanvas = null;
+            activeCtx = null;
+        }
+
+        // --- Canvas Management Functions (Simplified event setup) ---
+
         function updateRemoveButtonState() {
-            // Disable remove button if only one canvas is left
             removeCanvasButton.disabled = canvases.length <= 1;
         }
 
@@ -316,20 +353,13 @@
 
                 canvases.push(newCanvas);
                 contexts.push(ctx);
-
+                
+                // Add only the START listeners locally
                 newCanvas.addEventListener('mousedown', startDrawing);
                 newCanvas.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
+                    // Prevent default touch interaction (like scrolling) ONLY when starting to draw on the canvas
+                    e.preventDefault(); 
                     startDrawing(e.touches[0]);
-                });
-                
-                document.addEventListener('mouseup', stopDrawing);
-                document.addEventListener('mousemove', draw);
-                
-                newCanvas.addEventListener('touchend', stopDrawing);
-                newCanvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    draw(e.touches[0]);
                 });
 
                 updateRemoveButtonState();
@@ -338,47 +368,14 @@
 
         function removeLastCanvas() {
             if (canvases.length > 1) {
-                const lastCanvas = canvases.pop();
+                canvases.pop();
                 contexts.pop();
-                const lastWrapper = lastCanvas.parentNode; 
+                const lastWrapper = canvasContainer.lastChild; 
                 canvasContainer.removeChild(lastWrapper);
                 updateRemoveButtonState();
             }
         }
-
-        function startDrawing(event) {
-            const canvas = event.target;
-            if (canvas.tagName !== 'CANVAS') return;
-
-            activeCanvas = canvas;
-            const canvasIndex = canvases.indexOf(canvas);
-            activeCtx = contexts[canvasIndex];
-
-            isDrawing = true;
-            const pos = getEventPos(event, activeCanvas);
-            activeCtx.beginPath();
-            activeCtx.moveTo(pos.x, pos.y);
-        }
-
-        function draw(event) {
-            if (!isDrawing || !activeCtx || !activeCanvas) return;
-            
-            const pos = getEventPos(event, activeCanvas); 
-            
-            activeCtx.lineTo(pos.x, pos.y);
-            activeCtx.stroke();
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-            activeCanvas = null;
-            activeCtx = null;
-        }
         
-        /**
-         * Clears the ink from all existing canvases. 
-         * @param {boolean} shouldReinitialize - If true, destroys and recreates canvases (used for full reset). If false, just clears the ink/grid (used for "Try Again").
-         */
         function clearCanvases(shouldReinitialize = true) {
             if (shouldReinitialize || canvases.length === 0) {
                 canvasContainer.innerHTML = ''; 
@@ -395,7 +392,7 @@
             }
         }
 
-        // --- Word Management Logic ---
+        // --- Word Management Logic (Unchanged) ---
         function updateProgressDisplay() {
             document.getElementById('progressDisplay').textContent = `${correctlyWrittenIndices.size}/${words.length}`;
         }
@@ -502,10 +499,26 @@
         }
 
 
-        // --- UI Initialization ---
-        function initializeUI() {
-            // NOTE: Removed API Key input/storage logic for this hardcoded version.
+        // --- UI Initialization & Global Listeners (Fix for touch bug) ---
+        function initializeGlobalListeners() {
+            // Attach GLOBAL event listeners once to prevent duplication bug
+            document.addEventListener('mouseup', stopDrawing);
+            document.addEventListener('mousemove', draw);
+            document.addEventListener('touchend', stopDrawing);
             
+            // Global touchmove: Must be non-passive to allow e.preventDefault()
+            document.addEventListener('touchmove', (e) => {
+                // Prevent scrolling ONLY when we are actively drawing on a canvas
+                if (isDrawing && activeCanvas) {
+                    e.preventDefault(); 
+                    draw(e.touches[0]);
+                }
+            }, { passive: false });
+        }
+        
+        function initializeUI() {
+            initializeGlobalListeners();
+
             // Set initial slider value and display
             strokeWidthSlider.value = defaultStrokeWidth;
             widthValueSpan.textContent = defaultStrokeWidth;
@@ -527,7 +540,7 @@
                     const size = canvas.clientWidth;
                     canvas.width = size;
                     canvas.height = size;
-                    // Redraw grid after resize to clear content (since redrawing prevents scaling artifacts)
+                    // Redraw grid after resize to clear content
                     drawGrid(canvas.getContext('2d'), size);
                 });
             }); 
@@ -536,7 +549,7 @@
         }
 
 
-        // --- AI API Call Logic ---
+        // --- AI API Call Logic (Unchanged except for using HARDCODED_API_KEY) ---
         function combineCanvasesForAI() {
             if (canvases.length === 0) return null;
 
@@ -569,7 +582,7 @@
             const currentWord = words[currentWordIndex];
             const targetChar = currentWord.char;
             
-            const apiKey = HARDCODED_API_KEY; // ใช้คีย์ที่ถูก Hardcode ไว้
+            const apiKey = HARDCODED_API_KEY; 
             
             if (apiKey === "YOUR_GEMINI_API_KEY_HERE" || !apiKey) {
                 document.getElementById('resultBox').className = 'p-4 rounded-lg text-center font-medium bg-red-100 text-red-700 shadow-inner';

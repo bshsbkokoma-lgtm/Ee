@@ -103,7 +103,7 @@
 <body class="p-4 min-h-screen flex items-start justify-center">
 
     <div class="container-wrapper w-full p-4 md:p-8 bg-white rounded-xl shadow-2xl mt-4">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">📝 ฝึกเขียนตามคำบอกภาษาจีน by พี่มิวสิคสุดหล่ออห์</h1>
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">📝 ฝึกเขียนตามคำบอกภาษาจีน</h1>
         
         <!-- Progress and Mode Display -->
         <div class="text-center text-gray-600 mb-6 p-3 bg-gray-100 rounded-lg">
@@ -158,11 +158,11 @@
                 <button id="checkButton" onclick="checkHandwriting()" class="w-full sm:w-1/4 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 transform hover:scale-105 disabled:opacity-50">
                     <span id="checkButtonText">ตรวจลายมือ (ใช้ AI)</span>
                 </button>
-                <!-- NEW BUTTON: Clear Ink / Try Again -->
+                <!-- Clear Ink / Try Again Button -->
                 <button id="clearInkButton" onclick="clearCanvases(false)" class="w-full sm:w-1/4 bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 transform hover:scale-105">
                     เขียนใหม่ (ล้างหมึก)
                 </button>
-                <!-- RENAMED ID from clearButton to resetProgressButton -->
+                <!-- Reset Progress Button -->
                 <button id="resetProgressButton" onclick="resetApp()" class="w-full sm:w-1/4 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 transform hover:scale-105">
                     รีเซ็ตความคืบหน้า
                 </button>
@@ -183,9 +183,12 @@
     </div>
 
     <script>
-        // Global variables for Firebase API call
-        const apiKey = "";
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
+        // 🚨🚨🚨 คำเตือนความปลอดภัยที่สำคัญ! 🚨🚨🚨
+        // หากคุณนำโค้ดนี้ไปไว้บน GitHub Pages หรือเว็บไซต์สาธารณะ คีย์นี้จะถูกเปิดเผย
+        // กรุณาเปลี่ยน YOUR_GEMINI_API_KEY_HERE เป็นคีย์ของคุณ
+        const HARDCODED_API_KEY = "AIzaSyAjUZhQUazoAdsKGTYZckf026NWSK97sw4"; 
+        
+        const API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
 
         // --- Game/Word List Setup ---
         const words = [
@@ -203,7 +206,7 @@
         // --- State Management ---
         let currentWordIndex = 0;
         let isRandomMode = false;
-        let correctlyWrittenIndices = new Set(); // Tracks indices of correctly written words
+        let correctlyWrittenIndices = new Set(); 
         
         // --- Canvas Setup ---
         let canvases = []; 
@@ -269,24 +272,20 @@
             const index = canvases.indexOf(canvas);
             if (index > -1) {
                 const ctx = contexts[index];
-                // ใช้ค่า width ภายใน canvas ซึ่งถูกตั้งค่าไว้ตอนเริ่มต้น
                 const size = canvas.width; 
                 drawGrid(ctx, size);
             }
         }
         
         function addCanvasElement() {
-            // 1. Create the wrapper element
             const canvasWrapper = document.createElement('div');
             canvasWrapper.className = 'canvas-wrapper';
             
-            // 2. Create the canvas element
             const newCanvas = document.createElement('canvas');
             const canvasId = `canvas-${canvasCounter++}`;
             newCanvas.className = 'handwriting-box';
             newCanvas.id = canvasId;
             
-            // 3. Create the clear button
             const clearButton = document.createElement('button');
             clearButton.className = 'clear-ink-button';
             clearButton.setAttribute('aria-label', 'Clear ink on this canvas');
@@ -297,14 +296,11 @@
                 </svg>
             `;
 
-            // Append canvas and button to wrapper
             canvasWrapper.appendChild(newCanvas);
             canvasWrapper.appendChild(clearButton);
             
-            // 4. Append to container 
             canvasContainer.appendChild(canvasWrapper);
 
-            // Use setTimeout to ensure the element has rendered and clientWidth is correct before sizing
             setTimeout(() => {
                 const size = newCanvas.clientWidth;
                 newCanvas.width = size;
@@ -318,24 +314,18 @@
                 
                 drawGrid(ctx, size);
 
-                // 5. Store references
                 canvases.push(newCanvas);
                 contexts.push(ctx);
 
-                // 6. Attach listeners
-                // Mouse/Touch Start (Always starts on the correct canvas element)
                 newCanvas.addEventListener('mousedown', startDrawing);
                 newCanvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     startDrawing(e.touches[0]);
                 });
                 
-                // Drawing and Stopping (Bound to document for robust dragging/swiping)
-                // Using global listeners for move/up is key for persistent drawing
                 document.addEventListener('mouseup', stopDrawing);
                 document.addEventListener('mousemove', draw);
                 
-                // For touch, we specifically listen to the canvas to prevent scrolling
                 newCanvas.addEventListener('touchend', stopDrawing);
                 newCanvas.addEventListener('touchmove', (e) => {
                     e.preventDefault();
@@ -348,14 +338,10 @@
 
         function removeLastCanvas() {
             if (canvases.length > 1) {
-                // Remove from arrays
                 const lastCanvas = canvases.pop();
                 contexts.pop();
-
-                // Remove the wrapper (parent node of the canvas) from DOM
                 const lastWrapper = lastCanvas.parentNode; 
                 canvasContainer.removeChild(lastWrapper);
-
                 updateRemoveButtonState();
             }
         }
@@ -377,8 +363,6 @@
         function draw(event) {
             if (!isDrawing || !activeCtx || !activeCanvas) return;
             
-            // Use activeCanvas to get the position relative to the canvas 
-            // where drawing started, even if the mouse/finger temporarily left its area (for smooth drawing).
             const pos = getEventPos(event, activeCanvas); 
             
             activeCtx.lineTo(pos.x, pos.y);
@@ -403,7 +387,6 @@
                 canvasCounter = 0; 
                 addCanvasElement();
             } else {
-                // Standard clearing: loop through existing canvases and clear ink.
                 canvases.forEach((canvas, index) => {
                     const size = canvas.width;
                     const ctx = contexts[index];
@@ -429,10 +412,8 @@
         function findNextSequentialWordIndex() {
             if (correctlyWrittenIndices.size === words.length) return undefined;
             
-            // Start checking from the next sequential index
             let nextIndex = (currentWordIndex + 1) % words.length;
             
-            // Loop until an uncompleted word is found or we've checked all words
             let startIndex = nextIndex;
             do {
                 if (!correctlyWrittenIndices.has(nextIndex)) {
@@ -441,7 +422,7 @@
                 nextIndex = (nextIndex + 1) % words.length;
             } while (nextIndex !== startIndex);
 
-            return undefined; // Should not happen if size != length, but safe.
+            return undefined;
         }
 
         function handleCompletion() {
@@ -459,7 +440,7 @@
             document.getElementById('checkButton').disabled = true;
             document.getElementById('nextButton').disabled = true;
 
-            clearCanvases(false); // Clear ink but keep grid
+            clearCanvases(false); 
         }
 
         function loadWord(index) {
@@ -494,14 +475,13 @@
             if (nextIndex !== undefined) {
                 loadWord(nextIndex);
             } else {
-                // Fallback (should be covered by handleCompletion)
                 handleCompletion();
             }
         }
         
         function toggleRandomMode() {
             isRandomMode = !isRandomMode;
-            correctlyWrittenIndices.clear(); // Reset progress when changing mode
+            correctlyWrittenIndices.clear(); 
             
             const button = document.getElementById('toggleRandomModeButton');
             button.textContent = isRandomMode ? 'โหมด: สุ่มคำ (เปิดอยู่)' : 'โหมด: เรียงตามลำดับ (เปิดอยู่)';
@@ -509,7 +489,6 @@
                 'w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 transform hover:scale-105' : 
                 'w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 transform hover:scale-105';
             
-            // Start over from the first word (or a random one)
             currentWordIndex = 0; 
             updateProgressDisplay();
             loadNextAvailableWord(); 
@@ -525,6 +504,8 @@
 
         // --- UI Initialization ---
         function initializeUI() {
+            // NOTE: Removed API Key input/storage logic for this hardcoded version.
+            
             // Set initial slider value and display
             strokeWidthSlider.value = defaultStrokeWidth;
             widthValueSpan.textContent = defaultStrokeWidth;
@@ -559,7 +540,6 @@
         function combineCanvasesForAI() {
             if (canvases.length === 0) return null;
 
-            // Use the size of the first canvas as reference for consistency
             const singleCanvasWidth = canvases[0].width;
             const singleCanvasHeight = canvases[0].height;
             const gap = singleCanvasWidth * 0.1; 
@@ -567,24 +547,20 @@
             const totalWidth = (singleCanvasWidth * canvases.length) + (gap * (canvases.length - 1));
             const totalHeight = singleCanvasHeight;
             
-            // Create temporary canvas
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = totalWidth;
             tempCanvas.height = totalHeight;
             const tempCtx = tempCanvas.getContext('2d');
             
-            // Draw white background 
             tempCtx.fillStyle = '#FFFFFF';
             tempCtx.fillRect(0, 0, totalWidth, totalHeight);
 
-            // Draw content from all small canvases sequentially
             let xOffset = 0;
             canvases.forEach((canvas) => {
                 tempCtx.drawImage(canvas, xOffset, 0);
                 xOffset += singleCanvasWidth + gap;
             });
 
-            // Return the combined Base64 data
             return tempCanvas.toDataURL('image/png').split(',')[1];
         }
 
@@ -593,16 +569,24 @@
             const currentWord = words[currentWordIndex];
             const targetChar = currentWord.char;
             
-            // 1. Get Base64 Image Data (combined)
+            const apiKey = HARDCODED_API_KEY; // ใช้คีย์ที่ถูก Hardcode ไว้
+            
+            if (apiKey === "YOUR_GEMINI_API_KEY_HERE" || !apiKey) {
+                document.getElementById('resultBox').className = 'p-4 rounded-lg text-center font-medium bg-red-100 text-red-700 shadow-inner';
+                document.getElementById('resultBox').textContent = '⚠️ ต้องระบุ Gemini API Key ในโค้ด (บรรทัดที่ 215) ก่อนใช้ฟังก์ชัน AI ตรวจลายมือ';
+                document.getElementById('resultBox').classList.remove('hidden');
+                return;
+            }
+            
+            const apiUrl = `${API_URL_BASE}?key=${apiKey}`;
+
             const base64Image = combineCanvasesForAI();
             if (!base64Image) return;
             
-            // 2. Prepare UI for loading
             document.getElementById('loadingIndicator').classList.remove('hidden');
             document.getElementById('resultBox').classList.add('hidden');
             document.getElementById('checkButton').disabled = true;
 
-            // **System Prompt: เข้มงวดกับขีดที่ขาดหาย แต่ให้อภัยความเบี้ยว ข้อเสนอแนะสั้นและตรงประเด็น**
             const systemPrompt = "You are a Chinese handwriting tutor. Your task is to evaluate the user's handwriting (1 character per canvas) against the target word. **CRITICAL RULE**: If the character is clearly **missing an essential stroke** or the **stroke direction/turn is fundamentally incorrect**, the result MUST be marked **INCORRECT** (`is_correct: false`). You should overlook minor imperfections like slightly wobbly or short strokes if the character is still recognizable. If INCORRECT, provide a **very brief (1-2 sentences maximum) and specific** correction in Thai, identifying the character and the mistake (e.g., 'ขาดขีดหนึ่งของตัวอักษร X' or 'ทิศทางขีดผิด'). If CORRECT, provide brief encouragement in Thai. Respond ONLY with a single JSON object.";
             
             const userQuery = `Analyze the attached image. The target Chinese word is '${targetChar}' (Pinyin: ${currentWord.pinyin}). Evaluate the handwriting against the target character(s). The user currently has ${canvases.length} drawing boxes, and the target word has ${targetChar.length} characters.`;
@@ -644,14 +628,15 @@
 
             while (attempt < maxRetries) {
                 try {
-                    const response = await fetch(API_URL, {
+                    const response = await fetch(apiUrl, { 
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorBody = await response.json();
+                        throw new Error(`HTTP Error ${response.status}: ${errorBody.error?.message || 'Unknown API error.'}`);
                     }
                     
                     const apiResult = await response.json();
@@ -659,19 +644,18 @@
                     if (apiResult.candidates && apiResult.candidates.length > 0) {
                         const jsonText = apiResult.candidates[0].content.parts[0].text;
                         result = JSON.parse(jsonText);
-                        break; // Success, exit loop
+                        break; 
                     }
                     
                 } catch (error) {
-                    console.error(`Attempt ${attempt + 1} failed:`, error);
+                    console.error(`Attempt ${attempt + 1} failed:`, error.message);
                     attempt++;
                     if (attempt < maxRetries) {
                         const delay = Math.pow(2, attempt) * 1000;
                         await new Promise(resolve => setTimeout(resolve, delay));
                     } else {
-                        // All attempts failed
                         document.getElementById('resultBox').className = 'p-4 rounded-lg text-center font-medium bg-red-100 text-red-700 shadow-inner';
-                        document.getElementById('resultBox').textContent = '⚠️ การตรวจสอบล้มเหลว: ไม่สามารถเชื่อมต่อกับ AI ได้ กรุณาลองอีกครั้งในภายหลัง';
+                        document.getElementById('resultBox').textContent = `⚠️ การตรวจสอบล้มเหลว: ไม่สามารถเชื่อมต่อกับ AI ได้ (โปรดตรวจสอบคีย์): ${error.message}`;
                         document.getElementById('resultBox').classList.remove('hidden');
                         document.getElementById('loadingIndicator').classList.add('hidden');
                         document.getElementById('checkButton').disabled = false;
@@ -680,9 +664,8 @@
                 }
             }
             
-            // 3. Process Result and Update UI
             document.getElementById('loadingIndicator').classList.add('hidden');
-            document.getElementById('checkButton').disabled = false; // Re-enable check button
+            document.getElementById('checkButton').disabled = false; 
 
             if (result) {
                 const resultBox = document.getElementById('resultBox');
@@ -691,20 +674,19 @@
                 
                 if (result.is_correct) {
                     resultBox.className = 'p-4 rounded-lg text-center font-medium bg-green-100 text-green-700 shadow-inner';
-                    document.getElementById('nextButton').disabled = false; // อนุญาตให้ไปต่อได้
-                    correctlyWrittenIndices.add(currentWordIndex); // ทำเครื่องหมายว่าถูก
+                    document.getElementById('nextButton').disabled = false; 
+                    correctlyWrittenIndices.add(currentWordIndex); 
                     resultBox.textContent = result.feedback;
 
                 } else {
                     resultBox.className = 'p-4 rounded-lg text-center font-medium bg-yellow-100 text-yellow-700 shadow-inner';
-                    document.getElementById('nextButton').disabled = true; // ไม่อนุญาตให้ไปต่อ
+                    document.getElementById('nextButton').disabled = true; 
                     
-                    // Add mandatory instruction when incorrect
                     const instruction = " - คุณต้องเขียนและตรวจให้ถูกต้องก่อนจึงจะกด 'คำต่อไป' ได้";
                     resultBox.textContent = result.feedback + instruction;
                 }
                 
-                updateProgressDisplay(); // Update progress count
+                updateProgressDisplay(); 
             } else {
                 const resultBox = document.getElementById('resultBox');
                 resultBox.className = 'p-4 rounded-lg text-center font-medium bg-red-100 text-red-700 shadow-inner';
@@ -713,7 +695,6 @@
             }
         }
         
-        // Ensure canvas is correctly initialized and the first word is loaded on window load
         window.onload = function() {
             initializeUI();
         };
